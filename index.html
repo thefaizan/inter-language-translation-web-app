@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Language Translator App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        select, button, audio {
+            margin: 10px;
+            padding: 10px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .recording {
+            background-color: red;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Language Translator App</h1>
+        
+        <label for="inputLang">Input Language:</label>
+        <select id="inputLang">
+            <option value="en-US" selected>English</option>
+            <option value="fr-FR">French</option>
+            <option value="de-DE">German</option>
+        </select>
+
+        <label for="outputLang">Output Language:</label>
+        <select id="outputLang">
+            <option value="en-US">English</option>
+            <option value="fr-FR" selected>French</option>
+            <option value="de-DE">German</option>
+        </select>
+
+        <!-- Updated Button Names -->
+        <button id="inputSpeakBtn">Input Language Speak</button>
+        <button id="outputSpeakBtn">Output Language Speak</button>
+
+        <audio id="translatedAudio" controls></audio>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+
+        $(document).ready(function () {
+            const inputSpeakBtn = $("#inputSpeakBtn");
+            const outputSpeakBtn = $("#outputSpeakBtn");
+
+            // Function to handle recording and translation
+            function handleRecording(buttonType) {
+                let isInput = buttonType === 'input';
+                let recordBtn = isInput ? inputSpeakBtn : outputSpeakBtn;
+
+                recordBtn.on("mousedown", () => startRecording(isInput));
+                recordBtn.on("mouseup", () => stopRecording(isInput));
+            }
+
+            handleRecording('input');
+            handleRecording('output');
+
+            function startRecording(isInput) {
+                let recordBtn = isInput ? inputSpeakBtn : outputSpeakBtn;
+                recordBtn.addClass("recording").text("Recording...");
+
+                audioChunks = [];
+
+                // Ask for microphone access
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(stream => {
+                        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' }); // Use 'audio/webm'
+                        mediaRecorder.start();
+
+                        mediaRecorder.ondataavailable = event => {
+                            audioChunks.push(event.data);
+                        };
+                    })
+                    .catch(error => {
+                        console.error("Microphone access denied or error:", error);
+                        recordBtn.removeClass("recording").text(isInput ? "Input Language Speak" : "Output Language Speak");
+                    });
+            }
+
+            function stopRecording(isInput) {
+                let recordBtn = isInput ? inputSpeakBtn : outputSpeakBtn;
+                recordBtn.removeClass("recording").text(isInput ? "Input Language Speak" : "Output Language Speak");
+
+                if (mediaRecorder) {
+                    mediaRecorder.stop();
+
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        let inputLang, outputLang;
+
+                        if (isInput) {
+                            inputLang = $("#inputLang").val();
+                            outputLang = $("#outputLang").val();
+                        } else {
+                            // Swap the languages for reverse translation
+                            inputLang = $("#outputLang").val();
+                            outputLang = $("#inputLang").val();
+                        }
+
+                        const formData = new FormData();
+                        formData.append("audio", audioBlob);
+                        formData.append("inputLang", inputLang);
+                        formData.append("outputLang", outputLang);
+
+                        // Send the audio data and languages to the PHP backend
+                        $.ajax({
+                            url: 'translate.php',
+                            type: 'POST',
+                            data: formData,
+                            processData: false,
+                            contentType: false,
+                            success: function (response) {
+                                if (response.includes("Error")) {
+                                    console.error("Error in backend processing: ", response);
+                                } else {
+                                    const translatedAudio = document.getElementById('translatedAudio');
+                                    translatedAudio.src = 'data:audio/wav;base64,' + response;
+                                    translatedAudio.play();
+                                }
+                            },
+                            error: function (xhr, status, error) {
+                                console.error("Translation failed: ", error);
+                            }
+                        });
+                    };
+                }
+            }
+        });
+    </script>
+</body>
+</html>

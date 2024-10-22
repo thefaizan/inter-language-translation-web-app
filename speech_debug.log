@@ -1,0 +1,25 @@
+Array
+(
+    [results] => Array
+        (
+            [0] => Array
+                (
+                    [alternatives] => Array
+                        (
+                            [0] => Array
+                                (
+                                    [transcript] => I want to know that which country has won the FIFA World Cup 2022
+                                    [confidence] => 0.9273001
+                                )
+
+                        )
+
+                    [resultEndTime] => 5.290s
+                    [languageCode] => en-us
+                )
+
+        )
+
+    [totalBilledTime] => 6s
+    [requestId] => 4620089786199514162
+)
